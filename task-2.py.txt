@@ -1,0 +1,71 @@
+import pandas as pd 
+from sklearn.metrics.pairwise import cosine_similarity 
+ 
+def create_user_item_matrix(data): 
+    """Creates a user-item matrix from the given data.""" 
+    user_item_matrix = data.pivot_table(index='user_id', 
+columns='item_id', values='rating', fill_value=0) 
+    return user_item_matrix 
+ 
+def content_based_recommendations(item_id, item_features, top_n=5): 
+    """Recommends items based on content similarity.""" 
+    item_similarity = cosine_similarity(item_features) 
+    similar_items = list(enumerate(item_similarity[item_id])) 
+    similar_items = sorted(similar_items, key=lambda x: x[1], 
+reverse=True)[1:top_n + 1] #exclude itself 
+    recommended_items = [item[0] for item in similar_items] 
+    return recommended_items 
+ 
+def collaborative_filtering_recommendations(user_id, user_item_matrix, 
+top_n=5): 
+    """Recommends items based on collaborative filtering.""" 
+    user_ratings = user_item_matrix.loc[user_id] 
+    similarities = cosine_similarity(user_item_matrix) 
+    similar_users = list(enumerate(similarities[user_id - 1])) # 
+user_id - 1 because of zero indexing. 
+    similar_users = sorted(similar_users, key=lambda x: x[1], 
+reverse=True)[1:top_n + 1] #exclude itself 
+    similar_user_indices = [user[0] for user in similar_users] 
+    recommended_items = 
+user_item_matrix.iloc[similar_user_indices].mean().sort_values(ascendi
+ ng=False).index.tolist() 
+    rated_items = 
+user_item_matrix.loc[user_id][user_item_matrix.loc[user_id] > 
+0].index.tolist() 
+    recommended_items = [item for item in recommended_items if item 
+not in rated_items][:top_n] 
+ 
+    return recommended_items 
+ 
+# Example Usage: 
+ 
+# Sample data (user_id, item_id, rating) 
+data = pd.DataFrame({ 
+    'user_id': [1, 1, 2, 2, 3, 3, 4, 4, 1, 2, 3, 4], 
+    'item_id': [101, 102, 101, 103, 102, 104, 103, 105, 103, 104, 101, 
+102], 
+    'rating': [5, 4, 3, 5, 2, 4, 1, 5, 2, 1, 3, 4] 
+}) 
+# Example Item Features (for content-based filtering) 
+item_features = pd.DataFrame({ 
+'item_id': [101, 102, 103, 104, 105], 
+'feature1': [0.8, 0.2, 0.5, 0.1, 0.9], 
+'feature2': [0.1, 0.9, 0.3, 0.7, 0.4], 
+'feature3': [0.6, 0.4, 0.2, 0.8, 0.5] 
+}).set_index('item_id') 
+# User-Item Matrix (for collaborative filtering) 
+user_item_matrix = create_user_item_matrix(data) 
+# Content-based recommendations 
+item_to_recommend = 101 
+recommended_items_content = 
+content_based_recommendations(item_to_recommend - 101, item_features) 
+#item_id is used as index in item_features 
+print(f"Content-based recommendations for item {item_to_recommend}: 
+{recommended_items_content}") 
+# Collaborative filtering recommendations 
+user_to_recommend = 1 
+recommended_items_collaborative = 
+collaborative_filtering_recommendations(user_to_recommend, 
+user_item_matrix) 
+print(f"Collaborative filtering recommendations for user 
+{user_to_recommend}: {recommended_items_collaborative}")
